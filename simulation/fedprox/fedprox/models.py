@@ -693,7 +693,7 @@ def train_one_epoch_gpaf(encoder,classifier,discriminator,trainloader, DEVICE,cl
             reduction='batchmean'
             )
             # Add contrastive loss
-            contrast_loss = contrastive_loss(local_features, global_features, temperature=0.5)
+            contrast_loss = contrastive_loss(local_features, global_z, temperature=0.5)
         
             # Combine losses
             lambda_confusion = 1.0
