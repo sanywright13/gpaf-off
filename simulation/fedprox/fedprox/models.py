@@ -549,36 +549,21 @@ class Classifier(nn.Module):
             print(f"Output shape: {output.shape}")
             print("-" * 20)
 
-def nt_xent_loss(local_features, global_features, temperature=0.5):
-    """
-    NT-Xent loss using cosine similarity
-    """
-    # Normalize features
-    local_features = F.normalize(local_features, dim=1)
-    global_features = F.normalize(global_features, dim=1)
-    
-    # Initialize cosine similarity
-    cos = torch.nn.CosineSimilarity(dim=-1)
-    
-    batch_size = local_features.shape[0]
-    loss = 0
-    
-    for i in range(batch_size):
-        # Compute similarity between current local feature and all global features
-        anchor = local_features[i].unsqueeze(0)  # (1, feature_dim)
-        similarities = cos(anchor.expand_as(global_features), global_features)  # (batch_size)
-        
-        # Scale by temperature
-        similarities = similarities / temperature
-        
-        # Use the corresponding global feature as positive
-        labels = torch.tensor([i], device=local_features.device)
-        
-        # Compute cross entropy loss
-        loss += F.cross_entropy(similarities.unsqueeze(0), labels)
-    
-    return loss / batch_size
-
+def contrastive_loss(local_features, global_features, temperature=0.5):
+   cos = torch.nn.CosineSimilarity(dim=-1)
+   
+   # Local-global alignment (positive pairs)
+   positive_sim = cos(local_features, global_features)
+   positive_loss = torch.mean(1 - positive_sim)
+   
+   # Feature diversity (negative pairs)
+   batch_size = local_features.size(0)
+   feature_sims = cos(local_features.unsqueeze(1), local_features.unsqueeze(0))
+   # Remove diagonal (self-similarity)
+   mask = ~torch.eye(batch_size, dtype=torch.bool, device=local_features.device)
+   negative_loss = torch.mean(feature_sims[mask])
+   
+   return positive_loss - temperature * negative_loss
 def train_gpaf( encoder: nn.Module,
 classifier,
 discriminator,
@@ -707,15 +692,14 @@ def train_one_epoch_gpaf(encoder,classifier,discriminator,trainloader, DEVICE,cl
             uniform_target,
             reduction='batchmean'
             )
-            # Compute contrastive loss
-            contrast_loss = nt_xent_loss(local_features, global_z)
+            # Add contrastive loss
+            contrast_loss = contrastive_loss(local_features, global_features, temperature=0.5)
         
             # Combine losses
-            lambda_confusion = 1.0  # Weight for confusion loss
-            lambda_contrast = 0.5   # Weight for contrastive loss
-            total_loss = lambda_confusion * confusion_loss 
-        
-            loss=   contrast_loss
+            lambda_confusion = 1.0
+            lambda_contrast = 0.5
+            loss = lambda_confusion * confusion_loss + lambda_contrast * contrast_loss
+            loss += loss * labels.size(0)
             
             
             #loss_sumi += loss_sum.item()
@@ -745,7 +729,7 @@ def train_one_epoch_gpaf(encoder,classifier,discriminator,trainloader, DEVICE,cl
           
              # Accumulate loss
             epoch_loss += total_loss.item()
-            loss_sum += loss * labels.size(0)
+            
             # Compute accuracy
             _, predicted = torch.max(logits.data, 1)
             total += labels.size(0)
