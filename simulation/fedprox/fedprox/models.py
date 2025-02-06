@@ -85,8 +85,7 @@ def get_model(model_name):
                                 fused_window_process=FUSED_WINDOW_PROCESS)
 
   elif model_name =='resnet':
-    model= resnet18_breastmnist()  # Using the ResNet model we defined
-
+        pass
   return model
 Tensor = torch.FloatTensor
 # First, let's define the GRL layer for client side
@@ -124,10 +123,14 @@ class GradientReversalLayer(nn.Module):
         return GradientReversalFunction.apply(x, self.lambda_)
         
 class GlobalGenerator(nn.Module):
-    def __init__(self, noise_dim, label_dim, hidden_dim, output_dim):
+    def __init__(self, noise_dim, label_dim, domain_dim, hidden_dim, output_dim, num_domains=3):
         super().__init__()
         self.noise_dim = noise_dim
         self.label_dim = label_dim
+        self.domain_dim = domain_dim
+        
+        # Domain embedding layer
+        self.domain_embedding_layer = nn.Embedding(num_domains, domain_dim)
         
         # Initial projection for noise
         self.noise_proj = nn.Sequential(
@@ -143,30 +146,53 @@ class GlobalGenerator(nn.Module):
             nn.LeakyReLU(0.2)
         )
         
+        # Initial projection for domain embeddings
+        self.domain_proj = nn.Sequential(
+            nn.Linear(domain_dim, hidden_dim),
+            nn.LayerNorm(hidden_dim),
+            nn.LeakyReLU(0.2)
+        )
+        
+        # Combined feature processing
+        self.combined_proj = nn.Sequential(
+            nn.Linear(3 * hidden_dim, 2 * hidden_dim),
+            nn.LayerNorm(2 * hidden_dim),
+            nn.LeakyReLU(0.2)
+        )
+        
         # Mu and logvar projections
         self.mu_proj = nn.Linear(2 * hidden_dim, output_dim)
         self.logvar_proj = nn.Linear(2 * hidden_dim, output_dim)
         
         # Output projection
         self.output_proj = nn.Linear(output_dim, output_dim)
-        
+    
     def reparameterize(self, mu, logvar):
         std = torch.exp(0.5 * logvar)
         eps = torch.randn_like(std)
         z = mu + eps * std
         return z
     
-    def forward(self, noise, labels, return_distribution=False):
-        # Project noise and labels to same dimension
+    def forward(self, noise, labels, domain_indices):
+        # Get domain embeddings from indices
+        # Ensure domain_indices are long type
+        domain_indices = domain_indices.long()
+        domain_embeddings = self.domain_embedding_layer(domain_indices)
+        
+        # Project each input to same dimension
         noise_feat = self.noise_proj(noise)  # [batch_size, hidden_dim]
         label_feat = self.label_proj(labels)  # [batch_size, hidden_dim]
+        domain_feat = self.domain_proj(domain_embeddings)  # [batch_size, hidden_dim]
         
-        # Combine features
-        combined = torch.cat([noise_feat, label_feat], dim=1)  # [batch_size, 2*hidden_dim]
+        # Combine all features
+        combined = torch.cat([noise_feat, label_feat, domain_feat], dim=1)
+        
+        # Process combined features
+        processed = self.combined_proj(combined)
         
         # Generate mu and logvar
-        mu = self.mu_proj(combined)
-        logvar = self.logvar_proj(combined)
+        mu = self.mu_proj(processed)
+        logvar = self.logvar_proj(processed)
         
         # Apply reparameterization trick
         z = self.reparameterize(mu, logvar)
@@ -174,9 +200,9 @@ class GlobalGenerator(nn.Module):
         # Final output projection
         features = self.output_proj(z)
         
-        if return_distribution:
-            return features, mu, logvar
         return features
+
+
 
 
 class ServerDiscriminator(nn.Module):
@@ -229,7 +255,7 @@ def reparameterization(mu, logvar,latent_dim):
 
 
 #replace shalow feature extractor with swim architecture 
-
+'''
 class Encoder(nn.Module):
     def __init__(self, latent_dim):
         super(Encoder, self).__init__()
@@ -302,7 +328,7 @@ class Encoder(nn.Module):
         z = reparameterization(mu, logvar, self.latent_dim)
         
         return z
-
+'''
 #resnet for fedavg
 
 def conv3x3(in_planes, out_planes, stride=1, groups=1, dilation=1):
@@ -418,7 +444,8 @@ class ResNetBreastMNIST(nn.Module):
 def resnet18_breastmnist():
     """ResNet-18 model adapted for BreastMNIST dataset"""
     return ResNetBreastMNIST(BasicBlock, [2, 2, 2, 2])
-"""
+
+
 class Encoder(nn.Module):
     def __init__(self,latent_dim):
         super(Encoder, self).__init__()
@@ -448,7 +475,7 @@ class Encoder(nn.Module):
 
         #self._register_hooks()
         return z
- """       
+    
         
     
 
@@ -522,7 +549,35 @@ class Classifier(nn.Module):
             print(f"Output shape: {output.shape}")
             print("-" * 20)
 
-
+def nt_xent_loss(local_features, global_features, temperature=0.5):
+    """
+    NT-Xent loss using cosine similarity
+    """
+    # Normalize features
+    local_features = F.normalize(local_features, dim=1)
+    global_features = F.normalize(global_features, dim=1)
+    
+    # Initialize cosine similarity
+    cos = torch.nn.CosineSimilarity(dim=-1)
+    
+    batch_size = local_features.shape[0]
+    loss = 0
+    
+    for i in range(batch_size):
+        # Compute similarity between current local feature and all global features
+        anchor = local_features[i].unsqueeze(0)  # (1, feature_dim)
+        similarities = cos(anchor.expand_as(global_features), global_features)  # (batch_size)
+        
+        # Scale by temperature
+        similarities = similarities / temperature
+        
+        # Use the corresponding global feature as positive
+        labels = torch.tensor([i], device=local_features.device)
+        
+        # Compute cross entropy loss
+        loss += F.cross_entropy(similarities.unsqueeze(0), labels)
+    
+    return loss / batch_size
 
 def train_gpaf( encoder: nn.Module,
 classifier,
@@ -583,9 +638,12 @@ def train_one_epoch_gpaf(encoder,classifier,discriminator,trainloader, DEVICE,cl
             labels_onehot = F.one_hot(labels.long(), num_classes=2).float()
             #print(f'real_imgs eee ftrze{labels_onehot.shape} and {noise.shape}')
             noise = torch.tensor(noise, dtype=torch.float32)
+            domain_indices = torch.full((batch_size,), client_id, device=DEVICE, dtype=torch.long)  # Fixed dtype
+
+            # Create domain embedding for current client
+
             with torch.no_grad():
-                    
-              global_z = global_generator(noise, labels_onehot)
+              global_z = global_generator(noise, labels_onehot.to(DEVICE), domain_indices)
             # ---------------------
             # Train Discriminator
             # ---------------------
@@ -649,10 +707,17 @@ def train_one_epoch_gpaf(encoder,classifier,discriminator,trainloader, DEVICE,cl
             uniform_target,
             reduction='batchmean'
             )
-
-            loss= g_loss + lambda_adv * confusion_loss  
+            # Compute contrastive loss
+            contrast_loss = nt_xent_loss(local_features, global_z)
+        
+            # Combine losses
+            lambda_confusion = 1.0  # Weight for confusion loss
+            lambda_contrast = 0.5   # Weight for contrastive loss
+            total_loss = lambda_confusion * confusion_loss 
+        
+            loss=   contrast_loss
             
-           
+            
             #loss_sumi += loss_sum.item()
             grads = torch.autograd.grad(
                 loss, list(local_discriminator.parameters()), create_graph=True, retain_graph=True
@@ -671,7 +736,7 @@ def train_one_epoch_gpaf(encoder,classifier,discriminator,trainloader, DEVICE,cl
             cls_loss = criterion_cls(logits, labels)
 
             # Total loss for encoder
-            total_loss = cls_loss 
+            total_loss = cls_loss +g_loss 
            
             total_loss.backward()
             

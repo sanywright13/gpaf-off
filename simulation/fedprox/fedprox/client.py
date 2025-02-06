@@ -52,7 +52,10 @@ class FederatedClient(fl.client.NumPyClient):
         self.encoder.to(self.device)
         self.classifier.to(self.device)
         self.discriminator.to(self.device)
-        self.global_generator = GlobalGenerator(noise_dim=62, label_dim=2, hidden_dim=256  , output_dim=64)
+        #self.global_generator = GlobalGenerator(noise_dim=62, label_dim=2, hidden_dim=256  , output_dim=64)
+        self.domain_dim=32
+        self.global_generator = GlobalGenerator(noise_dim=62, label_dim=2,domain_dim=self.domain_dim,hidden_dim=256  , output_dim=64)
+        # Initialize server discriminator with GRL
         # Initialize server discriminator with GRL
         self.domain_discriminator = LocalDiscriminator(
             feature_dim=64, 
