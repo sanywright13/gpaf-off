@@ -665,7 +665,7 @@ def train_one_epoch_gpaf(encoder,classifier,discriminator,trainloader, DEVICE,cl
              # 3. Train Encoder and Classifier
             optimizer_E.zero_grad()
             optimizer_C.zero_grad()
-           
+             
             # Get fresh features for encoder training
             local_features = encoder(images)
             local_features.requires_grad_(True)
@@ -748,7 +748,7 @@ def train_one_epoch_gpaf(encoder,classifier,discriminator,trainloader, DEVICE,cl
         if param.grad is not None:
             param.grad.zero_()
 
-    loss_sum = loss_sum / len(trainloader.dataset)
+    loss_sum =loss / len(trainloader.dataset)
     grads = torch.autograd.grad(loss_sum, list(local_discriminator.parameters()))
     grads = [grad_.cpu().numpy() for grad_ in grads]
 
