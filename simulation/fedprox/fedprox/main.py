@@ -39,7 +39,7 @@ import torch
 import numpy as np
 from typing import List
 from torch.utils.data import DataLoader
-strategy="gpaf"
+strategy="moon"
  # Create or get experiment
 experiment_name = "fedgpaf_Fed_FL38"
 experiment = mlflow.get_experiment_by_name(experiment_name)
@@ -52,7 +52,6 @@ backend_config = {"client_resources": {"num_cpus":1 , "num_gpus": 0.0}}
 # When running on GPU, assign an entire GPU for each client
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')   
 # partition dataset and get dataloaders
-
 
 
 def visualize_intensity_distributions(trainloaders: List[DataLoader], num_clients: int):
@@ -264,10 +263,9 @@ def main(cfg: DictConfig) -> None:
         num_rounds=cfg.num_rounds,
         learning_rate=cfg.learning_rate,
         #change swim or resnet architecture
-     
-        
         experiment_name=experiment_name
-        ,strategy=strategy
+        ,strategy=strategy,
+        cfg=cfg
        )
     else:
       # Create the ClientApp

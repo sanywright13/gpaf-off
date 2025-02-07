@@ -6,6 +6,7 @@ from flwr.common import Context
 import flwr as fl
 import numpy as np
 import torch
+import copy
 from flwr.common.typing import NDArrays, Scalar
 from hydra.utils import instantiate
 from omegaconf import DictConfig
@@ -28,7 +29,8 @@ from flwr.common import (
     ndarrays_to_parameters,
     parameters_to_ndarrays,
 )
-from fedprox.models import train_gpaf,test_gpaf,Encoder,Classifier,Discriminator,GlobalGenerator,GradientReversalLayer,LocalDiscriminator
+import os
+from fedprox.models import train_gpaf,test_gpaf,Encoder,Classifier,Discriminator,GlobalGenerator,GradientReversalLayer,LocalDiscriminator,train_moon,init_net
 from fedprox.dataset_preparation import compute_label_counts, compute_label_distribution
 from fedprox.features_visualization import extract_features_and_labels,StructuredFeatureVisualizer
 class FederatedClient(fl.client.NumPyClient):
@@ -314,7 +316,8 @@ def gen_client_fn(
     learning_rate: float,
     model=None,
 experiment_name =None,
-strategy='fedavg'    
+strategy='fedavg',
+cfg=None  
 
 ) -> Callable[[Context], Client]:  # pylint: disable=too-many-arguments
     import mlflow
@@ -382,13 +385,9 @@ save_dir="feature_visualizations"
           )
           # Convert NumpyClient to Client
         elif strategy =="moon":
-
-
-          device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
+          
           trainloader = trainloaders[int(cid)]
           testloader = valloaders[int(cid)]
-
           return MOONFlowerClient(
             int(cid),
             cfg.output_dim,
@@ -403,8 +402,7 @@ save_dir="feature_visualizations"
 
         else:
           # Load model
-          
-         
+    
           numpy_client = FlowerClient(
             model, trainloader, valloader,num_epochs,
            cid,run_id,mlflow)
@@ -434,7 +432,6 @@ class FlowerClient(NumPyClient):
         self.run_id=run_id
         self.mlflow=mlflow
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
 
 
     #update the local model with parameters received from the server
@@ -552,10 +549,6 @@ class FlowerClient(NumPyClient):
 
 #monn client side
 
-from moon.models import init_net, train_fedprox, train_moon
-
-
-# pylint: disable=too-many-instance-attributes
 class MOONFlowerClient(fl.client.NumPyClient):
     """Standard Flower client for CNN training."""
 
@@ -563,33 +556,31 @@ class MOONFlowerClient(fl.client.NumPyClient):
         self,
         # net: torch.nn.Module,
         net_id: int,
-        dataset: str,
-        model: str,
+       
         output_dim: int,
         trainloader: DataLoader,
         valloader: DataLoader,
         device: torch.device,
         num_epochs: int,
-        learning_rate: float,
         mu: float,
         temperature: float,
-        model_dir: str,
-        alg: str,
     ):  # pylint: disable=too-many-arguments
-        self.net = init_net(dataset, model, output_dim)
+ 
+        self.net = init_net(output_dim)
         self.net_id = net_id
-        self.dataset = dataset
-        self.model = model
+        #self.dataset = dataset
+        
         self.output_dim = output_dim
         self.trainloader = trainloader
         self.valloader = valloader
         self.device = device
         self.num_epochs = num_epochs
-        self.learning_rate = learning_rate
+        self.learning_rate = 0.00013914064388085564
         self.mu = mu  # pylint: disable=invalid-name
         self.temperature = temperature
-        self.model_dir = model_dir
-        self.alg = alg
+        self.model_dir="moon"
+        #self.model_dir = model_dir
+        #self.alg = alg
 
     def get_parameters(self, config: Dict[str, Scalar]) -> NDArrays:
         """Return the parameters of the current net."""
@@ -606,7 +597,9 @@ class MOONFlowerClient(fl.client.NumPyClient):
     ) -> Tuple[NDArrays, int, Dict]:
         """Implement distributed fit function for a given client."""
         self.set_parameters(parameters)
-        prev_net = init_net(self.dataset, self.model, self.output_dim)
+
+        prev_net = init_net(self.output_dim)
+      
         if not os.path.exists(os.path.join(self.model_dir, str(self.net_id))):
             prev_net = copy.deepcopy(self.net)
         else:
@@ -616,7 +609,7 @@ class MOONFlowerClient(fl.client.NumPyClient):
                     os.path.join(self.model_dir, str(self.net_id), "prev_net.pt")
                 )
             )
-        global_net = init_net(self.dataset, self.model, self.output_dim)
+        global_net = init_net(self.output_dim)
         global_net.load_state_dict(self.net.state_dict())
        
         train_moon(
@@ -629,13 +622,15 @@ class MOONFlowerClient(fl.client.NumPyClient):
                 self.mu,
                 self.temperature,
                 self.device)
-      
+        
+        
         if not os.path.exists(os.path.join(self.model_dir, str(self.net_id))):
             os.makedirs(os.path.join(self.model_dir, str(self.net_id)))
         torch.save(
             self.net.state_dict(),
             os.path.join(self.model_dir, str(self.net_id), "prev_net.pt"),
         )
+     
         return self.get_parameters({}), len(self.trainloader), {"is_straggler": False}
 
     def evaluate(
@@ -646,8 +641,24 @@ class MOONFlowerClient(fl.client.NumPyClient):
         # skip evaluation in the client-side
         loss = 0.0
         accuracy = 0.0
-        return float(loss), len(self.valloader), {"accuracy": float(accuracy)}
-
+        print(f'client id : {self.client_id} and valid accuracy is {accuracy} and valid loss is : {loss}')
+        # Extract features and labels
+        val_features, val_labels = extract_features_and_labels(
+          self.net,
+         self.valloader,
+          self.device
+           )
+        #visualize all clients features per class
+        features_np = val_features.detach().cpu().numpy()
+        labels_np = val_labels.detach().cpu().numpy().reshape(-1)  # Ensure 1D array
+        # In client:
+        features_serialized = base64.b64encode(pickle.dumps(features_np)).decode('utf-8')
+        labels_serialized = base64.b64encode(pickle.dumps(labels_np)).decode('utf-8')
+        return float(loss), len(self.valloader), {"accuracy": float(accuracy),
+         "features": features_serialized,
+            "labels": labels_serialized,
+        }
+       
 
 
   # Save the trained model to MLflow.    

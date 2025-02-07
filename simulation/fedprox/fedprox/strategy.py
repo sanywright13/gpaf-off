@@ -149,7 +149,7 @@ class MOONStrategy(FedAvg):
         num_clients=3,  # total number of clients
         num_classes=2,           # number of classes in your dataset
 
-save_dir="feature_visualizations"
+save_dir="feature_visualizations_moon"
           )
     def evaluate(
         self, server_round: int, parameters: Parameters
