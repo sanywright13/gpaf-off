@@ -172,6 +172,18 @@ def get_server_fn(mlflow=None):
       on_evaluate_config_fn=get_on_evaluate_config_fn(),
 )
       print(f'strategy ggg {strategyi}')
+
+    elif strategy =="moon":
+      print(f'strategy of method {strategy}')
+      strategyi = server.MOONStrategy(
+        experiment_name,
+        fraction_fit=1.0,  # Ensure all clients participate in training
+        #fraction_evaluate=1.0,
+        min_fit_clients=3,  # Set minimum number of clients for training
+        min_evaluate_clients=2,
+        #on_fit_config_fn=fit_config_fn,
+     
+      )
     else: 
       print(f'strategy of method {strategy}')
       strategyi = server.GPAFStrategy(
@@ -241,7 +253,22 @@ def main(cfg: DictConfig) -> None:
         experiment_name=experiment_name,
         strategy=strategy
        )
+    elif strategy =="moon":
       
+      # Create the ClientApp
+      client_fn = gen_client_fn(
+        num_clients=cfg.num_clients,
+        num_epochs=cfg.num_epochs,
+        trainloaders=trainloaders,
+        valloaders=valloaders,
+        num_rounds=cfg.num_rounds,
+        learning_rate=cfg.learning_rate,
+        #change swim or resnet architecture
+     
+        
+        experiment_name=experiment_name
+        ,strategy=strategy
+       )
     else:
       # Create the ClientApp
       client_fn = gen_client_fn(

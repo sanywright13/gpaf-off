@@ -548,7 +548,47 @@ class Classifier(nn.Module):
             print(f"Input shape: {input[0].shape}")
             print(f"Output shape: {output.shape}")
             print("-" * 20)
+#for moon model 
 
+class ModelMOON(nn.Module):
+    """Model for MOON."""
+
+    def __init__(self, base_model, out_dim, n_classes):
+        super().__init__()
+
+        basemodel = resnet18_breastmnist()
+        self.features = nn.Sequential(*list(basemodel.children())[:-1])
+        num_ftrs = basemodel.fc.in_features
+      
+
+        # projection MLP
+        self.l1 = nn.Linear(num_ftrs, num_ftrs)
+        self.l2 = nn.Linear(num_ftrs, out_dim)
+
+        # last layer
+        self.l3 = nn.Linear(out_dim, n_classes)
+
+    def _get_basemodel(self, model_name):
+        try:
+            model = self.model_dict[model_name]
+            return model
+        except KeyError as err:
+            raise ValueError("Invalid model name.") from err
+
+    def forward(self, x):
+        """Forward."""
+        h = self.features(x)
+        h = h.squeeze()
+        x = self.l1(h)
+        x = F.relu(x)
+        x = self.l2(x)
+
+        y = self.l3(x)
+        return h, x, y
+
+
+
+#contrastive loss for gpaf
 def contrastive_loss(local_features, global_features, temperature=0.5):
    cos = torch.nn.CosineSimilarity(dim=-1)
    
@@ -697,7 +737,7 @@ def train_one_epoch_gpaf(encoder,classifier,discriminator,trainloader, DEVICE,cl
         
             # Combine losses
             lambda_confusion = 1.0
-            lambda_contrast = 0.5
+            lambda_contrast = 0.9
             loss = lambda_confusion * confusion_loss + lambda_contrast * contrast_loss
             loss += loss * labels.size(0)
             

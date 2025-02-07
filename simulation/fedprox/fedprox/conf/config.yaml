@@ -7,6 +7,11 @@ num_rounds: 4
 clients_per_round: 4
 stragglers_fraction: 0.9
 learning_rate: 0.03
+# model moon config
+
+output_dim: 256
+mu: 0.001
+temperature: 0.5
 
 client_resources:
   num_cpus: 2
