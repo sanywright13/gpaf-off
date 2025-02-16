@@ -1,0 +1,15 @@
+artifact_uri: file:///content/gpaf/simulation/fedprox/mlruns/233780958641116136/d0360f174e5e4a6e8b7e2d30d724eeed/artifacts
+end_time: 1739739788828
+entry_point_name: ''
+experiment_id: '233780958641116136'
+lifecycle_stage: active
+run_id: d0360f174e5e4a6e8b7e2d30d724eeed
+run_name: peaceful-stork-546
+run_uuid: d0360f174e5e4a6e8b7e2d30d724eeed
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1739739229085
+status: 3
+tags: []
+user_id: unknown

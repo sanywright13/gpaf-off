@@ -1,0 +1,15 @@
+artifact_uri: file:///content/gpaf/simulation/fedprox/mlruns/233780958641116136/6749067d93a740ddbc44fcfb2a7e2bca/artifacts
+end_time: 1739738470440
+entry_point_name: ''
+experiment_id: '233780958641116136'
+lifecycle_stage: active
+run_id: 6749067d93a740ddbc44fcfb2a7e2bca
+run_name: treasured-fly-498
+run_uuid: 6749067d93a740ddbc44fcfb2a7e2bca
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1739738450421
+status: 3
+tags: []
+user_id: unknown

@@ -1,0 +1,15 @@
+artifact_uri: file:///content/gpaf/simulation/fedprox/mlruns/233780958641116136/046e97ba6a834be18da8f660f9c3661a/artifacts
+end_time: 1739739028955
+entry_point_name: ''
+experiment_id: '233780958641116136'
+lifecycle_stage: active
+run_id: 046e97ba6a834be18da8f660f9c3661a
+run_name: salty-carp-400
+run_uuid: 046e97ba6a834be18da8f660f9c3661a
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1739739001874
+status: 3
+tags: []
+user_id: unknown

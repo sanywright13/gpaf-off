@@ -782,7 +782,7 @@ def train_one_epoch_gpaf(encoder,classifier,discriminator,trainloader, DEVICE,cl
             lambda_confusion = 1.0
             lambda_contrast = 0.9
             loss = lambda_confusion * confusion_loss 
-            loss += loss * labels.size(0)
+            loss_sum += loss * labels.size(0)
             
             
             #loss_sumi += loss_sum.item()
@@ -827,14 +827,15 @@ def train_one_epoch_gpaf(encoder,classifier,discriminator,trainloader, DEVICE,cl
     
     
 
+    
+
+    loss_sum =loss_sum / len(trainloader.dataset)
+    grads = torch.autograd.grad(loss_sum, list(local_discriminator.parameters()))
+    grads = [grad_.cpu().numpy() for grad_ in grads]
+      
     for param in local_discriminator.parameters():
         if param.grad is not None:
             param.grad.zero_()
-
-    loss_sum =loss / len(trainloader.dataset)
-    with torch.no_grad():
-      grads = torch.autograd.grad(loss_sum, list(local_discriminator.parameters()))
-      grads = [grad_.cpu().numpy() for grad_ in grads]
 
     print(f"local Epoch {epoch+1}: Loss_local/-discriminator = {loss_sum:.4f}, for (Client {client_id})")
 

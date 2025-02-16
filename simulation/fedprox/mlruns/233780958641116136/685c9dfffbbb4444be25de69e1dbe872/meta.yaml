@@ -1,0 +1,15 @@
+artifact_uri: file:///content/gpaf/simulation/fedprox/mlruns/233780958641116136/685c9dfffbbb4444be25de69e1dbe872/artifacts
+end_time: 1739738448253
+entry_point_name: ''
+experiment_id: '233780958641116136'
+lifecycle_stage: active
+run_id: 685c9dfffbbb4444be25de69e1dbe872
+run_name: resilient-goat-267
+run_uuid: 685c9dfffbbb4444be25de69e1dbe872
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1739738448217
+status: 3
+tags: []
+user_id: unknown
