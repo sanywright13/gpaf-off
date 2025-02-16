@@ -25,7 +25,7 @@ import os
 import subprocess
 #from fedprox.mlflowtracker import setup_tracking
 from fedprox.features_visualization import StructuredFeatureVisualizer
-from fedprox.strategy import FedAVGWithEval
+from fedprox.strategy import FedAVGWithEval ,MOONStrategy
 from fedprox.models import get_model
 #from fedprox.models import Generator
 FitConfig = Dict[str, Union[bool, float]]
@@ -175,7 +175,7 @@ def get_server_fn(mlflow=None):
 
     elif strategy =="moon":
       print(f'strategy of method {strategy}')
-      strategyi = server.MOONStrategy(
+      strategyi = MOONStrategy(
         experiment_name,
         fraction_fit=1.0,  # Ensure all clients participate in training
         #fraction_evaluate=1.0,

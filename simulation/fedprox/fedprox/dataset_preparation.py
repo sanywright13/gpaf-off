@@ -2,7 +2,7 @@
 """Functions for dataset download and processing."""
 
 from typing import List, Optional, Tuple,Dict
-
+import pandas as pd
 import numpy as np
 import torch
 import torchvision.transforms as transforms
@@ -10,6 +10,11 @@ from torch.utils.data import ConcatDataset, Dataset, Subset, random_split
 from torchvision.datasets import MNIST
 import os
 import torch.utils.data as data
+import zipfile
+from PIL import Image
+import io
+import random
+from sklearn.model_selection import train_test_split
 
 def  normalize_tensor(x: torch.Tensor):
     
@@ -42,6 +47,17 @@ def buid_domain_transform():
     t.append(transforms.Normalize([0.5], [0.5]))  # For grayscale data
     return transforms.Compose(t)
 
+
+#cHESTx
+def get_default_transform():
+    """Default transformation pipeline"""
+    return transforms.Compose([
+        transforms.Resize((384,384)),
+        transforms.ToTensor(),
+        transforms.Normalize([0.5], [0.5])  # For grayscale data
+
+    ])
+
 def compute_label_counts(dataset):
    
     labels = [label for _, label in dataset]  # Extract labels from the dataset
@@ -50,6 +66,8 @@ def compute_label_counts(dataset):
 
 def compute_label_distribution(labels: torch.Tensor, num_classes: int) -> Dict[int, float]:
     """Compute the label distribution for a given set of labels."""
+    labels = labels.long()  # Convert to integer type (long)
+
     label_counts = torch.bincount(labels, minlength=num_classes).float()
     label_probs = label_counts / label_counts.sum()
     return {label: label_probs[label].item() for label in range(num_classes)}
@@ -133,7 +151,7 @@ class SameModalityDomainShift:
 
 
 def create_domain_shifted_loaders(
-   root_path,
+   data_name,
     num_clients: int,
     batch_size: int
 ,
@@ -142,8 +160,11 @@ def create_domain_shifted_loaders(
     balance=False,
     iid=True,seed=42
 ) -> Tuple[List[DataLoader], List[DataLoader]]:
-   """Create domain-shifted dataloaders for each client."""
-    
+  """Create domain-shifted dataloaders for each client."""
+  print(f'name of the dataset {data_name}')
+
+  if data_name=="breastmnist":
+   
    root_path=os.getcwd()
    der = DataSplitManager(
         num_clients=num_clients,
@@ -241,10 +262,244 @@ def create_domain_shifted_loaders(
 
    testset=BreastMnistDataset(root_path,prefix='test',transform=transform)    
          
+  else:
+   der = DataSplitManager(
+        num_clients=num_clients,
+        batch_size=batch_size,
+        seed=42,
+        domain_shift=True
+    )
+   data_root="Filtered_ChestXray.zip"
+   try:
+    datasets = []
+    client_validsets = []
+    New_split=False
+    train_splits, val_splits= der.load_splits()
+    print(f"Loading existing splits for domain shift data... {len(train_splits)}")
+    #for client_id in range(num_clients):
+    for client_id , (train_split, val_split) in enumerate(zip(train_splits, val_splits)):
+        print(f'== client id for sanaa {client_id}')
+        # Apply domain shift to training data
+        shifted_trainset=ChestXrayDataset( data_root,
+                csv_path="Data_Entry_2017.csv",
+                transform=None,
+                client_id=client_id,
+                num_clients=num_clients,
+                domain_shifti=domain_shift,
+                prefix=True,)
+        # Create subsets using saved splits
+        shifted_trainset = Subset(shifted_trainset, train_split['indices'])
+        
+        print(f' train shape domain shift {len(shifted_trainset)}')
+
+        shifted_valset=ChestXrayDataset( data_root,
+                csv_path="Data_Entry_2017.csv",
+                transform=None,
+                client_id=client_id,
+                num_clients=num_clients,
+                domain_shifti=domain_shift,
+                prefix=True)
+        shifted_valset = Subset(shifted_valset, val_split['indices'])
+
+        #test_subset = Subset(testset, test_splits['indices'])
+        train_indices = train_split['indices']
+        val_indices = val_split['indices']
+        datasets.append(shifted_trainset)
+        client_validsets.append(shifted_valset)
+        # Create and verify subsets
+          
+        
+        print(f"\nClient {client_id} data points:")
+        print(f"Last 5 training indices: {train_indices[5:]}")
+        print(f"Number of training samples: {len(train_indices)}")
+        testset=shifted_valset
+   except Exception as e:
+    #load chestX dataset
+    print(e)
+    
+    print(f"Xchest sanaa {data_name} ")
+    New_split=True
+    
+    for client_id in range(num_clients):
+            print(f' client id for sanaa {client_id}')
+            #dataset=ChestXrayDataset(data_root,csv_path="Data_Entry_2017.csv")
+
+            shifted_trainset = ChestXrayDataset(
+                data_root,
+                csv_path="Data_Entry_2017.csv",
+                transform=None,
+                client_id=client_id,
+                num_clients=num_clients,
+                domain_shifti=domain_shift,
+                prefix=True,
+            )
+
+            
+            shifted_valset = ChestXrayDataset(
+                data_root,
+                csv_path="Data_Entry_2017.csv",
+                
+                transform=None,
+                client_id=client_id,
+                num_clients=num_clients,
+                domain_shifti=domain_shift,
+                prefix=False,
+            )
+            partition_size = int(len(shifted_trainset) / num_clients)
+            print(f' par {partition_size} and len of train is {len(shifted_trainset)}')
+            lengths = [partition_size] * num_clients
+            partition_size_valid = int(len(shifted_valset) / num_clients)
+            lengths_valid = [partition_size_valid] * num_clients
+    
+            if iid:
+              client_validsets = random_split(shifted_valset, lengths_valid, torch.Generator().manual_seed(seed))
+
+              datasets = random_split(shifted_trainset, lengths, torch.Generator().manual_seed(seed))
+            else:
+ 
+              #drishlet distribution
+              # Non-IID splitting using Dirichlet distribution
+              alpha=0.5
+              min_size_ratio = 0.1  # Ensures each partition has at least 10% of average size
+              datasets = _dirichlet_split(
+                    shifted_trainset,
+                    num_clients,
+                    alpha=alpha,
+                    min_size_ratio = 0.1,  # Ensures each partition has at least 10% of average size,
+                    seed=seed
+                )
+              print(f'dataset drichlet {datasets[0]}')      
+              partition_size_valid = int(len(shifted_valset) / num_clients)
+              lengths_valid = [partition_size_valid] * num_clients
+              # Adjust last part to fix rounding errors
+              total_size = len(shifted_valset)  # Should be 914
+
+              lengths_valid[-1] += total_size - sum(lengths_valid)
+              print(f"Size of shifted_valset: {len(shifted_valset)}")
+              print(f"Sum of lengths_valid: {sum(lengths_valid)}")
+              client_validsets = random_split(shifted_valset, lengths_valid, 
+                                              torch.Generator().manual_seed(seed))
+              testset=client_validsets
+              New_split=True
 
     
-   return datasets, client_validsets , testset,New_split
+  return datasets, client_validsets , testset,New_split
 
+def load_partition(zip_path,csv_path,prefix):
+ 
+        df = pd.read_csv(csv_path)
+        print(f"Loaded CSV with {len(df)} entries")
+        
+        # Create binary labels for Pneumonia
+        df['Pneumonia'] = df['Finding Labels'].apply(
+            lambda x: 1 if 'Pneumonia' in x else 0
+        )
+        
+        
+
+        df['label'] = df['Finding Labels'].apply(lambda x: 1 if 'Pneumonia' in x else 0)
+        print(f"data {df['label']}")
+
+        '''
+        # Get available images from zip
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            available_images = set(os.path.basename(f) for f in zip_ref.namelist() 
+                                     if f.endswith(('.png', '.jpg', '.jpeg')))
+        print(f'dgf {available_images} ')
+        # Filter DataFrame to only include available images
+        df = df[df['Image Index'].isin(available_images)]
+        print(f"after data {df['label']}")
+        '''
+        ss=os.getcwd()
+        folder_path=os.path.join(ss,"Filtered_ChestXray/Filtered_ChestXray")
+
+        # Get available images from the extracted folder
+        available_images = set(os.listdir(folder_path))
+        print(f"Found {len(available_images)} images in extracted folder.")
+    
+        # Filter DataFrame to only include available images
+        df = df[df['Image Index'].isin(available_images)]
+        print(f"Filtered dataset size: {len(df)}")
+
+        # Print detailed label distribution
+        print("\nLabel Distribution:")
+        print("Positive (Pneumonia) cases:")
+        pneumonia_cases = df[df['Pneumonia'] == 1]['Finding Labels'].value_counts()
+        print(pneumonia_cases.head())
+        
+        print("\nExample Negative cases (first 5 types):")
+        negative_cases = df[df['Pneumonia'] == 0]['Finding Labels'].value_counts()
+        print(negative_cases.head())
+
+        # Print dataset statistics
+        num_pneumonia = df['Pneumonia'].sum()
+        num_normal = len(df) - num_pneumonia
+        print(f"\nDataset Statistics:")
+        print(f"Total images: {len(df)}")
+        print(f"Pneumonia cases: {num_pneumonia}")
+        print(f"Normal cases: {num_normal}")
+        val_split=0.2
+        # Split into train and validation sets
+        train_df, val_df = train_test_split(df, test_size=val_split, stratify=df['Pneumonia'], random_state=42)
+
+        # Select the appropriate dataset partition
+        df = train_df if prefix else val_df
+        
+        # Print dataset statistics
+        #print(f"{'Training' if prefix else 'Validation'} set size: {len(df)}")
+        return df
+
+class ChestXrayDataset(Dataset):
+    def __init__(self, zip_path, csv_path, transform=None, client_id=None,num_clients=None,domain_shifti=None,prefix=True):
+        
+        self.zip_path = zip_path
+        self.transform = transform
+        self.client_id = client_id
+        
+        self.data_=load_partition( zip_path, csv_path,prefix)
+        # Store image paths separately from labels
+        self.data = self.data_['Image Index'].values
+        self.labels = self.data_['label'].values  # Now, labels are separate from data
+        print(f"partition : {prefix} and data {self.data[0]}")
+        print(f"partition 1: {prefix} and data {self.labels.shape}")
+        # Keep zip handle open
+        ss=os.getcwd()
+        print(f'dddd hsgs {ss}')
+
+    def __len__(self):
+        return len(self.data)
+
+
+    @property
+    def targets(self):
+        self.labels = np.squeeze(self.labels)
+        return self.labels
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        # Get image filename and corresponding label
+        image_name = self.data[idx]
+        label = self.labels[idx]
+        
+        ss=os.getcwd()
+       
+        image_name=os.path.join(ss,"Filtered_ChestXray/Filtered_ChestXray",image_name)
+        image= Image.open(image_name).convert('L')
+            # Show original image details
+            #print(f"Original Image Mode: {image.mode}")  # E.g., "RGB" or "L" (grayscale)
+            #print(f"Original Image Size: {image.size}")  # (width, height)
+        # Apply transformations
+        # Use a context manager for BytesIO
+        
+        if self.transform:
+                image = self.transform(image)
+        else:
+                image = get_default_transform()(image)
+        #print(f"Original Image after transformation :{image}")  # E.g., "RGB" or "L" (grayscale)
+
+        return image, torch.tensor(label, dtype=torch.float32)
 
 
 def makeBreastnistdata(root_path, prefix):
