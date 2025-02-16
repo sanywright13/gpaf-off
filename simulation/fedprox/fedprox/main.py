@@ -39,7 +39,8 @@ import torch
 import numpy as np
 from typing import List
 from torch.utils.data import DataLoader
-strategy="moon"
+strategy="gpaf"
+# approach gpaf : global generator with non domain and non contrastive loss
  # Create or get experiment
 experiment_name = "fedgpaf_Fed_FL38"
 experiment = mlflow.get_experiment_by_name(experiment_name)
@@ -196,7 +197,7 @@ def get_server_fn(mlflow=None):
       )
 
     # Configure the server for 5 rounds of training
-    config = ServerConfig(num_rounds=10)
+    config = ServerConfig(num_rounds=3)
     return ServerAppComponents(strategy=strategyi, config=config)
  return server_fn
 

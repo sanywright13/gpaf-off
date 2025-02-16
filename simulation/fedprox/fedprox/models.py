@@ -121,7 +121,7 @@ class GradientReversalLayer(nn.Module):
         
     def forward(self, x):
         return GradientReversalFunction.apply(x, self.lambda_)
-        
+'''        
 class GlobalGenerator(nn.Module):
     def __init__(self, noise_dim, label_dim, domain_dim, hidden_dim, output_dim, num_domains=3):
         super().__init__()
@@ -202,25 +202,69 @@ class GlobalGenerator(nn.Module):
         
         return features
 
+'''
 
-
-
-class ServerDiscriminator(nn.Module):
-    def __init__(self, feature_dim, num_domains):
+class GlobalGenerator(nn.Module):
+    def __init__(self, noise_dim, label_dim, hidden_dim, output_dim):
         super().__init__()
-        # Remove GRL and use standard discriminator architecture
-        self.discriminator = nn.Sequential(
-            nn.Linear(feature_dim, 512),
-            nn.LeakyReLU(0.2),
-            nn.Dropout(0.3),
-            nn.Linear(512, 256),
-            nn.LeakyReLU(0.2),
-            nn.Linear(256, num_domains),
-            nn.LogSoftmax(dim=1)  # Use LogSoftmax for numerical stability
+        self.noise_dim = noise_dim
+        self.label_dim = label_dim
+        
+        # Initial projection for noise
+        self.noise_proj = nn.Sequential(
+            nn.Linear(noise_dim, hidden_dim),
+            nn.LayerNorm(hidden_dim),
+            nn.LeakyReLU(0.2)
         )
+        
+        # Initial projection for labels
+        self.label_proj = nn.Sequential(
+            nn.Linear(label_dim, hidden_dim),
+            nn.LayerNorm(hidden_dim),
+            nn.LeakyReLU(0.2)
+        )
+        
+        # Mu and logvar projections
+        self.mu_proj = nn.Linear(2 * hidden_dim, output_dim)
+        self.logvar_proj = nn.Linear(2 * hidden_dim, output_dim)
+        
+        # Output projection
+        self.output_proj = nn.Linear(output_dim, output_dim)
+        
+    def reparameterize(self, mu, logvar):
+        std = torch.exp(0.5 * logvar)
+        eps = torch.randn_like(std)
+        z = mu + eps * std
+        return z
+    
+    def forward(self, noise, labels, return_distribution=False):
+        # Project noise and labels to same dimension
+        noise_feat = self.noise_proj(noise)  # [batch_size, hidden_dim]
+        label_feat = self.label_proj(labels)  # [batch_size, hidden_dim]
+        #print(f"noise_feat shape: {noise_feat.shape}")
+        #print(f"label_feat shape: {label_feat.shape}")
+        
+        label_feat = label_feat.squeeze(1)  # Converts [32, 1, 256] → [32, 256]
+        # Combine features
+        combined = torch.cat([noise_feat, label_feat], dim=1)  # [batch_size, 2*hidden_dim]
+        
+        # Generate mu and logvar
+        mu = self.mu_proj(combined)
+        logvar = self.logvar_proj(combined)
+        
+        # Apply reparameterization trick
+        z = self.reparameterize(mu, logvar)
+        
+        # Final output projection
+        features = self.output_proj(z)
+        
+        if return_distribution:
+            return features, mu, logvar
+        return features
 
-    def forward(self, x):
-        return self.discriminator(x)
+
+
+
 
 
 def reparameterize(mu, logvar):
@@ -663,12 +707,11 @@ def train_one_epoch_gpaf(encoder,classifier,discriminator,trainloader, DEVICE,cl
             labels_onehot = F.one_hot(labels.long(), num_classes=2).float()
             #print(f'real_imgs eee ftrze{labels_onehot.shape} and {noise.shape}')
             noise = torch.tensor(noise, dtype=torch.float32)
-            domain_indices = torch.full((batch_size,), client_id, device=DEVICE, dtype=torch.long)  # Fixed dtype
 
             # Create domain embedding for current client
 
             with torch.no_grad():
-              global_z = global_generator(noise, labels_onehot.to(DEVICE), domain_indices)
+              global_z = global_generator(noise, labels_onehot).to(DEVICE)
             # ---------------------
             # Train Discriminator
             # ---------------------
@@ -733,12 +776,12 @@ def train_one_epoch_gpaf(encoder,classifier,discriminator,trainloader, DEVICE,cl
             reduction='batchmean'
             )
             # Add contrastive loss
-            contrast_loss = contrastive_loss(local_features, global_z, temperature=0.5)
+            #contrast_loss = contrastive_loss(local_features, global_z, temperature=0.5)
         
             # Combine losses
             lambda_confusion = 1.0
             lambda_contrast = 0.9
-            loss = lambda_confusion * confusion_loss + lambda_contrast * contrast_loss
+            loss = lambda_confusion * confusion_loss 
             loss += loss * labels.size(0)
             
             
@@ -760,7 +803,7 @@ def train_one_epoch_gpaf(encoder,classifier,discriminator,trainloader, DEVICE,cl
             cls_loss = criterion_cls(logits, labels)
 
             # Total loss for encoder
-            total_loss = cls_loss +g_loss 
+            total_loss = cls_loss + g_loss 
            
             total_loss.backward()
             
@@ -768,7 +811,7 @@ def train_one_epoch_gpaf(encoder,classifier,discriminator,trainloader, DEVICE,cl
             optimizer_C.step()
           
              # Accumulate loss
-            epoch_loss += total_loss.item()
+            epoch_loss += total_loss.detach().item()
             
             # Compute accuracy
             _, predicted = torch.max(logits.data, 1)
