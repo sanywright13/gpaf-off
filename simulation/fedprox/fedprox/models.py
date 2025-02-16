@@ -85,7 +85,7 @@ def get_model(model_name):
                                 fused_window_process=FUSED_WINDOW_PROCESS)
 
   elif model_name =='resnet':
-        pass
+            model= resnet18_breastmnist()  # Using the ResNet model we defined
   return model
 Tensor = torch.FloatTensor
 # First, let's define the GRL layer for client side

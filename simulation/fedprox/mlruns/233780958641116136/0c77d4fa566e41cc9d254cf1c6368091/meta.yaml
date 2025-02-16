@@ -1,0 +1,15 @@
+artifact_uri: file:///content/gpaf/simulation/fedprox/mlruns/233780958641116136/0c77d4fa566e41cc9d254cf1c6368091/artifacts
+end_time: 1739744973724
+entry_point_name: ''
+experiment_id: '233780958641116136'
+lifecycle_stage: active
+run_id: 0c77d4fa566e41cc9d254cf1c6368091
+run_name: ambitious-perch-765
+run_uuid: 0c77d4fa566e41cc9d254cf1c6368091
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1739744973681
+status: 3
+tags: []
+user_id: unknown

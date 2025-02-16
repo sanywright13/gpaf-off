@@ -1,0 +1,15 @@
+artifact_uri: file:///content/gpaf/simulation/fedprox/mlruns/233780958641116136/f0acc8238a2b4bceb1720fc6d46ab084/artifacts
+end_time: 1739742660874
+entry_point_name: ''
+experiment_id: '233780958641116136'
+lifecycle_stage: active
+run_id: f0acc8238a2b4bceb1720fc6d46ab084
+run_name: auspicious-mule-143
+run_uuid: f0acc8238a2b4bceb1720fc6d46ab084
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1739742660831
+status: 3
+tags: []
+user_id: unknown

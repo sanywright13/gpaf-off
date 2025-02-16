@@ -1,0 +1,15 @@
+artifact_uri: file:///content/gpaf/simulation/fedprox/mlruns/233780958641116136/adcd9206933a40e5a4135d2fac043182/artifacts
+end_time: 1739742251479
+entry_point_name: ''
+experiment_id: '233780958641116136'
+lifecycle_stage: active
+run_id: adcd9206933a40e5a4135d2fac043182
+run_name: amusing-yak-503
+run_uuid: adcd9206933a40e5a4135d2fac043182
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1739742251429
+status: 3
+tags: []
+user_id: unknown

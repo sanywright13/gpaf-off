@@ -15,7 +15,7 @@ from PIL import Image
 import io
 import random
 from sklearn.model_selection import train_test_split
-
+import gc
 def  normalize_tensor(x: torch.Tensor):
     
         return x / 255.0 if x.max() > 1.0 else x
@@ -386,68 +386,33 @@ def create_domain_shifted_loaders(
   return datasets, client_validsets , testset,New_split
 
 def load_partition(zip_path,csv_path,prefix):
- 
-        df = pd.read_csv(csv_path)
-        print(f"Loaded CSV with {len(df)} entries")
-        
-        # Create binary labels for Pneumonia
-        df['Pneumonia'] = df['Finding Labels'].apply(
-            lambda x: 1 if 'Pneumonia' in x else 0
-        )
-        
-        
-
-        df['label'] = df['Finding Labels'].apply(lambda x: 1 if 'Pneumonia' in x else 0)
-        print(f"data {df['label']}")
-
-        '''
-        # Get available images from zip
-        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-            available_images = set(os.path.basename(f) for f in zip_ref.namelist() 
-                                     if f.endswith(('.png', '.jpg', '.jpeg')))
-        print(f'dgf {available_images} ')
-        # Filter DataFrame to only include available images
-        df = df[df['Image Index'].isin(available_images)]
-        print(f"after data {df['label']}")
-        '''
-        ss=os.getcwd()
-        folder_path=os.path.join(ss,"Filtered_ChestXray/Filtered_ChestXray")
-
-        # Get available images from the extracted folder
-        available_images = set(os.listdir(folder_path))
-        print(f"Found {len(available_images)} images in extracted folder.")
+        # Read CSV in chunks to reduce memory usage
+        chunk_size = 1000
+        chunks = []
+        for chunk in pd.read_csv(csv_path, chunksize=chunk_size):
+          # Process only necessary columns
+          chunk = chunk[['Image Index', 'Finding Labels']]
+          chunk['label'] = chunk['Finding Labels'].apply(lambda x: 1 if 'Pneumonia' in x else 0)
+          chunks.append(chunk[['Image Index', 'label']])
     
-        # Filter DataFrame to only include available images
+        df = pd.concat(chunks, ignore_index=True)
+       
+        
+
+     
+        # Filter available images more efficiently
+        available_images = set(os.listdir(os.path.join(os.getcwd(), "Filtered_ChestXray/Filtered_ChestXray")))
         df = df[df['Image Index'].isin(available_images)]
-        print(f"Filtered dataset size: {len(df)}")
-
-        # Print detailed label distribution
-        print("\nLabel Distribution:")
-        print("Positive (Pneumonia) cases:")
-        pneumonia_cases = df[df['Pneumonia'] == 1]['Finding Labels'].value_counts()
-        print(pneumonia_cases.head())
-        
-        print("\nExample Negative cases (first 5 types):")
-        negative_cases = df[df['Pneumonia'] == 0]['Finding Labels'].value_counts()
-        print(negative_cases.head())
-
-        # Print dataset statistics
-        num_pneumonia = df['Pneumonia'].sum()
-        num_normal = len(df) - num_pneumonia
-        print(f"\nDataset Statistics:")
-        print(f"Total images: {len(df)}")
-        print(f"Pneumonia cases: {num_pneumonia}")
-        print(f"Normal cases: {num_normal}")
-        val_split=0.2
-        # Split into train and validation sets
-        train_df, val_df = train_test_split(df, test_size=val_split, stratify=df['Pneumonia'], random_state=42)
-
-        # Select the appropriate dataset partition
-        df = train_df if prefix else val_df
-        
-        # Print dataset statistics
-        #print(f"{'Training' if prefix else 'Validation'} set size: {len(df)}")
-        return df
+    
+        # Split efficiently
+        train_idx, val_idx = train_test_split(
+        np.arange(len(df)), 
+        test_size=0.2, 
+        stratify=df['label'], 
+        random_state=42
+          )
+    
+        return df.iloc[train_idx if prefix else val_idx]
 
 class ChestXrayDataset(Dataset):
     def __init__(self, zip_path, csv_path, transform=None, client_id=None,num_clients=None,domain_shifti=None,prefix=True):
@@ -455,7 +420,8 @@ class ChestXrayDataset(Dataset):
         self.zip_path = zip_path
         self.transform = transform
         self.client_id = client_id
-        
+        self.image_dir = os.path.join(os.getcwd(), "Filtered_ChestXray/Filtered_ChestXray")
+        self.transform = transform or get_default_transform()
         self.data_=load_partition( zip_path, csv_path,prefix)
         # Store image paths separately from labels
         self.data = self.data_['Image Index'].values
@@ -464,7 +430,9 @@ class ChestXrayDataset(Dataset):
         print(f"partition 1: {prefix} and data {self.labels.shape}")
         # Keep zip handle open
         ss=os.getcwd()
-        print(f'dddd hsgs {ss}')
+        # Clear DataFrame from memory after extracting necessary info
+        self.data_ = None
+        gc.collect()
 
     def __len__(self):
         return len(self.data)
@@ -480,28 +448,18 @@ class ChestXrayDataset(Dataset):
 
     def __getitem__(self, idx):
         # Get image filename and corresponding label
-        image_name = self.data[idx]
-        label = self.labels[idx]
-        
-        ss=os.getcwd()
+
+        image_path = os.path.join(self.image_dir, self.data[idx])
+    
+        # Use PIL's lazy loading
+        with Image.open(image_path) as img:
+          img = img.convert('L')
+          if self.transform:
+            img = self.transform(img)
+    
+        return img, torch.tensor(self.labels[idx], dtype=torch.float32)
+
        
-        image_name=os.path.join(ss,"Filtered_ChestXray/Filtered_ChestXray",image_name)
-        image= Image.open(image_name).convert('L')
-            # Show original image details
-            #print(f"Original Image Mode: {image.mode}")  # E.g., "RGB" or "L" (grayscale)
-            #print(f"Original Image Size: {image.size}")  # (width, height)
-        # Apply transformations
-        # Use a context manager for BytesIO
-        
-        if self.transform:
-                image = self.transform(image)
-        else:
-                image = get_default_transform()(image)
-        #print(f"Original Image after transformation :{image}")  # E.g., "RGB" or "L" (grayscale)
-
-        return image, torch.tensor(label, dtype=torch.float32)
-
-
 def makeBreastnistdata(root_path, prefix):
   print(f' root path {root_path}')
   data_path=os.path.join(root_path,'dataset')

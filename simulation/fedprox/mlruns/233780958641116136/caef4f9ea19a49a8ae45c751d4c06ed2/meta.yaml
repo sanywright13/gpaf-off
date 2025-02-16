@@ -1,0 +1,15 @@
+artifact_uri: file:///content/gpaf/simulation/fedprox/mlruns/233780958641116136/caef4f9ea19a49a8ae45c751d4c06ed2/artifacts
+end_time: 1739746745140
+entry_point_name: ''
+experiment_id: '233780958641116136'
+lifecycle_stage: active
+run_id: caef4f9ea19a49a8ae45c751d4c06ed2
+run_name: efficient-hen-29
+run_uuid: caef4f9ea19a49a8ae45c751d4c06ed2
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1739746745084
+status: 3
+tags: []
+user_id: unknown

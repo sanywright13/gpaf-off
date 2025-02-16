@@ -17,6 +17,7 @@ from flwr.common import ConfigsRecord, MetricsRecord, ParametersRecord
 from  mlflow.tracking import MlflowClient
 import base64
 import pickle
+import gc
 from flwr.common import (
     EvaluateIns,
     EvaluateRes,
@@ -366,7 +367,7 @@ save_dir="feature_visualizations"
           )
         #print(f'  ffghf {trainloader}')
         valloader = valloaders[int(cid)]
-        num_epochs=35
+        num_epochs=3
         
         if strategy=="gpaf":
           numpy_client =  FederatedClient(
@@ -496,7 +497,9 @@ class FlowerClient(NumPyClient):
     
     def train(self,net, trainloader, client_id,epochs: int, verbose=False):
       """Train the network on the training set."""
+      print("start local training")
       criterion = torch.nn.CrossEntropyLoss()
+      gc.collect()
       lr=0.00013914064388085564
       optimizer = torch.optim.Adam(net.parameters(),lr=lr,weight_decay=1e-4)
       net.train()
@@ -505,13 +508,16 @@ class FlowerClient(NumPyClient):
         for batch in trainloader:
 
             images, labels = batch
+            labels=labels.long()
             #print(f'labels shape hh {labels.shape}')
             
             # Remove any squeeze operation since labels are already 1D
+            '''
             if len(labels.shape) == 1:
               labels = labels.to(self.device)  # Just move to device
             else:
               labels=labels.squeeze(1)
+            '''
             #print(f'after labels shape hh {labels.shape}')
             #print(labels)
             optimizer.zero_grad()
@@ -520,12 +526,15 @@ class FlowerClient(NumPyClient):
             loss.backward()
             optimizer.step()
             # Metrics
-            epoch_loss += loss
+            epoch_loss += loss.item()
             total += labels.size(0)
             correct += (torch.max(outputs.data, 1)[1] == labels).sum().item()
+            print(f"finish batch")
         epoch_loss /= len(trainloader.dataset)
         epoch_acc = correct / total
         print(f"Epoch {epoch+1}: train loss {epoch_loss}, accuracy {epoch_acc} of client : {client_id}")
+
+        
 
 
     def test(self,net, testloader):
@@ -536,7 +545,7 @@ class FlowerClient(NumPyClient):
       with torch.no_grad():
         for batch in testloader:
             images, labels = batch
-            labels=labels.squeeze(1)
+            #labels=labels.squeeze(1)
             
             outputs = net(images)
             loss += criterion(outputs, labels).item()

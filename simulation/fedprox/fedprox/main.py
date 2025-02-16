@@ -39,7 +39,7 @@ import torch
 import numpy as np
 from typing import List
 from torch.utils.data import DataLoader
-strategy="gpaf"
+strategy="fedavg"
 # approach gpaf : global generator with non domain and non contrastive loss
  # Create or get experiment
 experiment_name = "fedgpaf_Fed_FL38"
@@ -197,7 +197,7 @@ def get_server_fn(mlflow=None):
       )
 
     # Configure the server for 5 rounds of training
-    config = ServerConfig(num_rounds=10)
+    config = ServerConfig(num_rounds=5)
     return ServerAppComponents(strategy=strategyi, config=config)
  return server_fn
 
@@ -223,7 +223,7 @@ def main(cfg: DictConfig) -> None:
     trainloaders, valloaders, testloader=data_load(cfg)
     # Print data distribution before visualization
    
-        
+    '''     
     visualize_intensity_distributions(trainloaders, cfg.num_clients) 
     visualize_class_domain_shift(trainloaders)    # Visualize label distributions
     visualizer = LabelDistributionVisualizer(
@@ -241,7 +241,7 @@ def main(cfg: DictConfig) -> None:
     
     # Log distribution metrics
     distribution_metrics = visualizer.compute_distribution_metrics(client_distributions)
-    
+    '''
     if strategy=="gpaf":
       client_fn = gen_client_fn(
         num_clients=cfg.num_clients,
