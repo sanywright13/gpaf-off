@@ -1,0 +1,15 @@
+artifact_uri: file:///content/gpaf/simulation/fedprox/mlruns/233780958641116136/7a56d95d9cc3405f8d461fcce8aebb3c/artifacts
+end_time: 1739728211547
+entry_point_name: ''
+experiment_id: '233780958641116136'
+lifecycle_stage: active
+run_id: 7a56d95d9cc3405f8d461fcce8aebb3c
+run_name: delicate-lynx-237
+run_uuid: 7a56d95d9cc3405f8d461fcce8aebb3c
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1739728182910
+status: 3
+tags: []
+user_id: unknown

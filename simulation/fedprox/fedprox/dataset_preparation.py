@@ -694,7 +694,8 @@ def _partition_data(
     transform,
     iid: Optional[bool] = True,
     power_law: Optional[bool] = True,
-    balance: Optional[bool] = False,
+    balance
+    : Optional[bool] = False,
     seed: Optional[int] = 42,
     domain_shift=False,
    

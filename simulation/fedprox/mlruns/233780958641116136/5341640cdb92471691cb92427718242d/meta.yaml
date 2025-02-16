@@ -1,0 +1,15 @@
+artifact_uri: file:///content/gpaf/simulation/fedprox/mlruns/233780958641116136/5341640cdb92471691cb92427718242d/artifacts
+end_time: 1739727923891
+entry_point_name: ''
+experiment_id: '233780958641116136'
+lifecycle_stage: active
+run_id: 5341640cdb92471691cb92427718242d
+run_name: merciful-flea-719
+run_uuid: 5341640cdb92471691cb92427718242d
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1739727905758
+status: 3
+tags: []
+user_id: unknown

@@ -1,0 +1,15 @@
+artifact_uri: file:///content/gpaf/simulation/fedprox/mlruns/233780958641116136/7facb79e039a47f48d5bf34c549e110d/artifacts
+end_time: 1739728211010
+entry_point_name: ''
+experiment_id: '233780958641116136'
+lifecycle_stage: active
+run_id: 7facb79e039a47f48d5bf34c549e110d
+run_name: chill-grub-185
+run_uuid: 7facb79e039a47f48d5bf34c549e110d
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1739728185127
+status: 3
+tags: []
+user_id: unknown
