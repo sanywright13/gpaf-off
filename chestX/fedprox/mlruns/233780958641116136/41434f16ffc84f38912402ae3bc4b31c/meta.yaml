@@ -1,0 +1,15 @@
+artifact_uri: file:///content/gpaf/simulation/fedprox/mlruns/233780958641116136/41434f16ffc84f38912402ae3bc4b31c/artifacts
+end_time: 1739725553697
+entry_point_name: ''
+experiment_id: '233780958641116136'
+lifecycle_stage: active
+run_id: 41434f16ffc84f38912402ae3bc4b31c
+run_name: orderly-goat-401
+run_uuid: 41434f16ffc84f38912402ae3bc4b31c
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1739725530841
+status: 3
+tags: []
+user_id: unknown

@@ -1,0 +1,15 @@
+artifact_uri: file:///content/gpaf/simulation/fedprox/mlruns/233780958641116136/856e88738aef4103be4cb469af995cd6/artifacts
+end_time: 1739727924655
+entry_point_name: ''
+experiment_id: '233780958641116136'
+lifecycle_stage: active
+run_id: 856e88738aef4103be4cb469af995cd6
+run_name: hilarious-cat-254
+run_uuid: 856e88738aef4103be4cb469af995cd6
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1739727906180
+status: 3
+tags: []
+user_id: unknown

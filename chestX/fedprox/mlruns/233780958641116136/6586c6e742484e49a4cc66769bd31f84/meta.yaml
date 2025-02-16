@@ -1,0 +1,15 @@
+artifact_uri: file:///content/gpaf/simulation/fedprox/mlruns/233780958641116136/6586c6e742484e49a4cc66769bd31f84/artifacts
+end_time: 1739727705862
+entry_point_name: ''
+experiment_id: '233780958641116136'
+lifecycle_stage: active
+run_id: 6586c6e742484e49a4cc66769bd31f84
+run_name: languid-hound-523
+run_uuid: 6586c6e742484e49a4cc66769bd31f84
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1739727691992
+status: 3
+tags: []
+user_id: unknown

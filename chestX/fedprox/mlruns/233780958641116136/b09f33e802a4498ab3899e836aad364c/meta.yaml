@@ -1,0 +1,15 @@
+artifact_uri: file:///content/gpaf/simulation/fedprox/mlruns/233780958641116136/b09f33e802a4498ab3899e836aad364c/artifacts
+end_time: 1739728076443
+entry_point_name: ''
+experiment_id: '233780958641116136'
+lifecycle_stage: active
+run_id: b09f33e802a4498ab3899e836aad364c
+run_name: amazing-dolphin-484
+run_uuid: b09f33e802a4498ab3899e836aad364c
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1739728060338
+status: 3
+tags: []
+user_id: unknown

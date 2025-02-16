@@ -1,0 +1,15 @@
+artifact_uri: file:///content/gpaf/simulation/fedprox/mlruns/233780958641116136/b12e90e0958f462ea4aaeb56e0130bf0/artifacts
+end_time: 1739728055491
+entry_point_name: ''
+experiment_id: '233780958641116136'
+lifecycle_stage: active
+run_id: b12e90e0958f462ea4aaeb56e0130bf0
+run_name: luxuriant-shoat-793
+run_uuid: b12e90e0958f462ea4aaeb56e0130bf0
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1739728055343
+status: 3
+tags: []
+user_id: unknown

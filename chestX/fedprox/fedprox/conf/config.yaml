@@ -1,0 +1,27 @@
+---
+
+num_clients: 3 # total number of clients
+num_epochs: 2 # number of local epochs
+batch_size: 13
+num_rounds: 4
+clients_per_round: 4
+stragglers_fraction: 0.9
+learning_rate: 0.03
+# model moon config
+
+output_dim: 256
+mu: 0.001
+temperature: 0.5
+
+client_resources:
+  num_cpus: 2
+  num_gpus: 0.0
+
+server_device: cpu
+
+dataset_config:
+  iid: false
+  balance: false
+  power_law: true
+  dataset_name: breastmnist
+
