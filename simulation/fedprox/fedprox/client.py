@@ -367,7 +367,7 @@ save_dir="feature_visualizations"
           )
         #print(f'  ffghf {trainloader}')
         valloader = valloaders[int(cid)]
-        num_epochs=3
+        num_epochs=10
         
         if strategy=="gpaf":
           numpy_client =  FederatedClient(
@@ -512,12 +512,12 @@ class FlowerClient(NumPyClient):
             #print(f'labels shape hh {labels.shape}')
             
             # Remove any squeeze operation since labels are already 1D
-            '''
+          
             if len(labels.shape) == 1:
               labels = labels.to(self.device)  # Just move to device
             else:
               labels=labels.squeeze(1)
-            '''
+           
             #print(f'after labels shape hh {labels.shape}')
             #print(labels)
             optimizer.zero_grad()
@@ -545,7 +545,7 @@ class FlowerClient(NumPyClient):
       with torch.no_grad():
         for batch in testloader:
             images, labels = batch
-            #labels=labels.squeeze(1)
+            labels=labels.squeeze(1)
             
             outputs = net(images)
             loss += criterion(outputs, labels).item()

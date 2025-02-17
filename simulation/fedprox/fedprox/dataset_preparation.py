@@ -163,7 +163,7 @@ def create_domain_shifted_loaders(
   """Create domain-shifted dataloaders for each client."""
   print(f'name of the dataset {data_name}')
 
-  if data_name=="breastmnist":
+  if data_name=="pneumoniamnist_224":
    
    root_path=os.getcwd()
    der = DataSplitManager(
@@ -257,6 +257,13 @@ def create_domain_shifted_loaders(
           print(f'dataset drichlet {datasets[0]}')      
           partition_size_valid = int(len(shifted_valset) / num_clients)
           lengths_valid = [partition_size_valid] * num_clients
+          #client_validsets = random_split(shifted_valset, lengths_valid, 
+                                              #torch.Generator().manual_seed(seed))
+          total_size = len(shifted_valset)  # Should be 914
+
+          lengths_valid[-1] += total_size - sum(lengths_valid)
+          print(f"Size of shifted_valset: {len(shifted_valset)}")
+          print(f"Sum of lengths_valid: {sum(lengths_valid)}")
           client_validsets = random_split(shifted_valset, lengths_valid, 
                                               torch.Generator().manual_seed(seed))
 
@@ -463,7 +470,7 @@ class ChestXrayDataset(Dataset):
 def makeBreastnistdata(root_path, prefix):
   print(f' root path {root_path}')
   data_path=os.path.join(root_path,'dataset')
-  medmnist_data=os.path.join(data_path,'breastmnist.npz')
+  medmnist_data=os.path.join(data_path,'pneumoniamnist_128.npz')
   print(f'dataset path: {medmnist_data}')
   data=np.load(medmnist_data)
   if prefix=='train':
